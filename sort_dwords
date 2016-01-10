@@ -5,43 +5,52 @@
 assume cs: code, ds: data
 data segment
 	sir dd 12AB5678h, 1256ABCDh, 12344344h, 10106666h, 10002222h, 999AAAAh
+		dd 107777h, 8913333h, 1231111h, 908888h, 1710000h, 15555h
 	l equ ($ - sir) / 4
-	rez dd dup(?)
+	rez dd l dup(?)
 	ordonat db ?
 data ends
 
 code segment
 start:
-	mov ax, data
-	mov ds, ax							;incarc in ds adresa segmentului de date
-	mov cx, l -1
-	mov si, 2
-	cld									;parcurgerea se face de la inceput la sfarsit
-	sort:
-		mov cx, l - 1
-		mov ordonat, -1					;presupunem sirul ordonat
-		mov si, 2
+	MOV ax, data
+	MOV ds, ax					;incarc in ds adresa segmentului de date
+	MOV es, ax					;o sa folosesc intructiuni pe siruri care folosesc 
+								;es:di si incarc adresa segemntului de date si in es
+	CLD							;parcurgerea se face de la inceput la sfarsit
+	sort:						;sorteaza cvintele din sirul de dublu cuvinte 
+								;folosind metoda bulelor
+		MOV cx, l - 1			;de fiecare data vom compara 2 elemente consecutive deci von 
+								;avea l - 1 iteratii pentru a nu ne adresa in afara sirului
+		MOV ordonat, -1			;presupunem sirul ordonat
+		LEA si, sir + 2 		;incarc in ds:si adresa far a primului cuvant din sir
 		compara:
-			mov ax, word ptr sir[si]	;ax = sir[si]		;trec cu si la urmatorul cuvant
-			mov bx, word ptr sir[si + 4];bx = sir[si + 4]
-			cmp ax, bx					;ax ? bx 
-			jna next					;daca sir[si] <= sir[si + 4]  trec la pasul urmator, altfel le interschimb in memorie
-			mov ordonat, 0				;daca am ajuns aici inseamna ca sirul nu este ordonat
-			mov word ptr sir[si], bx 	;de unde am luat valoarea ce se afla in ax pun valoarea din bx 
-			mov word ptr sir[si + 4], ax;de unde am luat valoarea ce se afla in bx pun valoarea din ax 
+			LODSW 				;in ax avem acum valoarea de la adresa si, iar si creste cu 2
+			MOV bx, ax			;memoram in bx valoarea din ax pentru a nu o pierde la urm incarcare
+			ADD si, 2 			;pregatim si pentru a putea incarca urmatorul cuvant
+			LODSW 				;in ax avem acum urmatorul cuvant
+ 			CMP bx, ax			;comparam cele doua cuvinte (ax le afla la un index mare decat bx)
+			JNA next			;daca bx <= ax  trec la pasul urmator, altfel le interschimb in memorie
+			MOV ordonat, 0		;daca am ajuns aici inseamna ca sirul nu este ordonat
+			MOV di, si 			;pregatesc di pentru a putea memora pe pozitiile corecte 
+			SUB di, 6 			;cele doua cuvinte 
+ 			STOSW				;de unde am luat valoarea ce se afla in bx pun valoarea din ax 
+			MOV ax, bx 			;pun in ax ce se afla in bx deoarece STOSW lucreaza cu ax
+			ADD di, 2 			;pozitinez di pe urmatoarea pozitie unde trebuie inserat cuvantul
+			STOSW 				;de unde am luat valoarea ce se afla in ax pun valoarea din bx
 			next:
-			add si, 4					;trec la urmatorul element
+			SUB si, 2			;trec la urmatorul cuvant, scazand pe si cu 2,
+								;deoarece acesta a fost modificat de LODSW
 		loop compara
- 		cmp ordonat, 0					;daca am gasit un element care nu se afla pe pozitia corecta, mai parcurge odata sirul
-	je sort		
-	mov cx, l * 2
-	mov si, 0
-	copy:
-		mov ax, word ptr sir[si]
-		mov word ptr rez[si], ax
-		add si, 2
-	loop copy
-	mov ax, 4C00h						;incheierea executiei programului
-	int 21h
+ 		CMP ordonat, 0			;daca ordonat este fals, atunci mai parcurgem inca odata
+ 								;cuvintele superioare din sirul de dublucuvinte
+	JE sort		
+	MOV cx, l * 2				;pregatesc cx pentru a copia sirul initial in alt sir
+	CLD							;parcurgerea se va face de la inceput spre sfarsit
+	LEA si, sir 				;incarc in ds:si adresa far sirului initial
+	LEA di, rez 				;incarc in es:di adresa far sirului final (es = ds)
+	REP MOVSW					;copiez in rez sirul initial pentru a putea verifica programul
+	MOV ax, 4C00h				;incheierea executiei programului
+	INT 21h
 code ends
 end start
