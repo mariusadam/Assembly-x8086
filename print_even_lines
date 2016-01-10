@@ -1,0 +1,133 @@
+;7. Sa se scrie un program care citeste numele unui fisier de la tastatura 
+;si apoi va afisa liniile de ordin par din acest fisier.
+assume cs:code, ds:data
+data segment
+	maxFileNameLen db 30
+	lenFile db ?
+	file db 31 dup(?)
+	hnd dw ?
+	
+	buffer db 2 dup('$')
+	msg1 db 'Introduceti numele fisierului: $'
+	msg2 db 'Liniile de ordin impar sunt: $'
+	openErrorMsg db 'Nu s-a putut deschide fisierul!$'
+	readErrorMsg db 'Nu s-a putut citi din fisier!$'
+	closeErrorMsg db 'Nu s-a putut inchide fisierul!$'
+	existNewLine db 0
+	lineNumber dw ?
+data ends
+
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	;afisez mesaj pentru citirea numelui fisierului
+	lea dx, msg1
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxFileNameLen
+	mov ah, 0Ah
+	int 21h
+	call newLine
+	;transform numele fisierului in asciiz
+	mov bl, lenFile
+	xor bh, bh
+	mov file[bx], 0
+	;deschid fisierul pentru citire
+	lea dx, file
+	mov al, 0
+	mov ah, 3Dh
+	int 21h
+	jc open_error
+	mov hnd, ax		;salvez handler-ul fisierului
+	;afisez mesaj pentru rezultate
+	call newLine
+	lea dx, msg2
+	mov ah, 09h
+	int 21h
+	call newLine
+	mov lineNumber, 1
+	repeta:
+		;incerc sa citesc 255 de caractere
+		lea dx, buffer
+		mov bx, hnd
+		mov cx, 1
+		mov ah, 3Fh
+		int 21h
+		jc read_error
+		cmp ax, 0	;daca numarul de octeti cititi este 0 atunci ne oprim
+		je break
+		test_afisare:
+			test lineNumber, 0001h
+			jnz search	;daca ZF=1 atunci linia curenta este un numer par si afisam buffer-ul
+		;daca am ajuns aici inseamna ca trebuie afisat bufferul
+		lea dx, buffer
+		mov ah, 09h
+		int 21h
+		;in continuare verificam daca in bufferul current se afla caracterul newLine
+		search:
+			cmp buffer[0], 10
+			je found
+			not_found:
+				jmp repeta
+			found:
+				inc lineNumber
+	jmp repeta
+	break:
+	;inchiderea fisierului
+	mov bx, hnd
+	mov ah, 3Eh
+	int 21h
+	jc close_error
+	jmp final
+	
+	open_error:
+		lea dx, openErrorMsg
+		mov ah, 09h
+		int 21h
+		jmp final
+		
+	read_error:
+		lea dx, readErrorMsg
+		mov ah, 09h
+		int 21h 
+		jmp final
+		
+	close_error:
+		lea dx, closeErrorMsg
+		mov ah, 09h
+		int 21h
+	
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
+			
+		
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
