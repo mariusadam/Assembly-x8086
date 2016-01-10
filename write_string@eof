@@ -1,0 +1,111 @@
+;Se citeste un string si un nume de fisier.
+;Sa se adauge stringul citit la sfarsitul fisierului
+assume cs:code, ds:data
+data segment
+	msgSir db 'Introduceti un sir de caractere: $'
+	msgFile db 'Introduceti numele fisierului: $'
+	msgRez db 'Sirul a fost adaugat la sfarsitul fisierului!$'
+	msgOpenError db 'Eroare la deschiderea fisierului!$'
+	msgPointerError db 'Eroare la mutarea pointerului de fisier!$'
+	msgWriteError db 'Eroare la scrierea in fisier!$'
+	
+	maxFileNameLen db 20
+	lgFileName db ?
+	fileName db 21 dup(?)
+	handle dw ?
+	
+	maxSirLen db 254
+	lgSir db ?
+	sir db 254 dup(?)
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+start:
+	push data
+	pop ds
+	;mesaj pentru citirea sirului
+	lea dx, msgSir
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxSirLen
+	mov ah, 0Ah
+	int 21h
+	;mesaj pentru citire numelui fisierului
+	call newLine
+	lea dx, msgFile 
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxFileNameLen
+	mov ah, 0Ah
+	int 21h
+	;transform numele fisierului in asciiz
+	mov bl, lgFileName
+	xor bh, bh
+	mov byte ptr fileName[bx], 0
+	;deschid fisierul pentru scriere
+	lea dx, fileName
+	mov ax, 3D01h
+	int 21h
+	jc far ptr open_error
+	mov handle, ax
+	;mut pointer-ul de fisier relativ de sfarsitul fisierului cu o pozitie
+	mov bx, handle
+	mov cx, 0
+	mov dx, 0
+	mov ax, 4202h
+	int 21h
+	jc pointer_error
+	;scriu in fisier sirul citit
+	lea dx, sir
+	mov bx, handle
+	mov cl, lgSir
+	xor ch, ch
+	mov ah, 40h
+	int 21h
+	jc write_error
+	;afisez mesaj ca s-a scris in fisier
+	call newLine
+	lea dx, msgRez
+	mov ah, 09h
+	int 21h
+	jmp final
+	
+	open_error:
+		call newLine
+		lea dx, msgOpenError
+		mov ah, 09h
+		int 21h
+		jmp final
+		
+	pointer_error:
+		call newLine
+		lea dx, msgPointerError
+		mov ah, 09h
+		int 21h 
+		jmp final
+		
+	write_error:
+		call newLine
+		lea dx, msgWriteError
+		mov ah, 09h
+		int 21h
+		
+	final:
+	mov ax, 4C00h
+	int 21h 
+code ends
+end start
+	
+	
+	
