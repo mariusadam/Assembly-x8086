@@ -1,0 +1,258 @@
+;Sa se citeasca de la tastatura numele unui fisier si
+;sa se afiseze pe ecran numerele prime din fisier
+assume cs:code, ds:data
+data segment
+	msgFileName db 'Introduceti numele fisierului: $'
+	msgRez db 'Numerele prime din fisier sunt: $'
+	msgRez2 db 'Nu sunt numere prime in fisier!$'
+	msgCloseError db 'Eroare la inchiderea fisierului!$'
+	msgReadError db 'Eroare la citirea din fisier!$'
+	msgOpenError db 'Eroare la deschiderea fisierului!$'
+	
+	maxFileName db 20
+	lenFileName db ?
+	fileName db 21 dup(?)
+	handle dw ?
+	
+	tabHexa db '0123456789ABCDEF'
+	sirCifre db 4 dup(?)
+	zece dw 10h
+	nr dw ?
+	char db ?
+	cntPrime dw ?
+	lenSirCifre db ?
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+getHex proc
+;primeste in si offsetul sirului de cifre hexa iar in cx lungimea
+;returneaza in ax numarul hexa corespunzator
+;modifica ax, cx, si, nu modifica restul reg
+	push bx
+	push dx
+	mov ax, 0
+	mov bx, 10h
+	inmulteste:
+		mul bx
+		mov dx, ax
+		lodsb
+		cmp al, 'A'
+		jb digit
+			sub al, 'A'
+			add al, 10
+			jmp aduna
+		digit:
+			sub al, '0'
+		aduna:
+		xor ah, ah
+		add ax, dx
+	loop inmulteste
+	pop dx
+	pop bx
+	ret
+getHex endp
+isPrime proc
+;primeste un numar in ax si returneaza in bx daca nr este prim
+;bx = 1, nr este prim sau 0 in caz contrar
+;modifica bx, nu modifica restul reg
+	push ax
+	push cx
+	push dx
+	cmp ax, 1
+	jne continue1
+		mov bx, 0
+		jmp return
+	continue1:
+	cmp ax, 2
+	jne continue2
+		mov bx, 1
+		jmp return
+	continue2:
+	test ax, 0000000000000001b
+	jnz continue3
+		;daca ajung aici numarul este par, deci nu este prim
+		mov bx, 0
+		jmp return
+	continue3:
+	push ax	;salvez ax
+	xor dx, dx
+	mov bx, 2
+	div bx
+	mov cx, ax	;cx  = ax / 2
+	mov bx, 3
+	pop ax	;restaurez ax
+	search_divisor:
+		cmp bx, cx
+		ja break1
+		push ax
+		xor dx, dx
+		div bx
+		cmp dx, 0
+		jne next1
+			mov bx, 0
+			jmp return
+		next1:
+		add bx, 2
+		pop ax
+	jmp search_divisor
+	break1:
+	mov bx, 1
+	return:
+	pop dx
+	pop cx
+	pop ax
+	ret
+isPrime endp
+printHex proc
+;afiseaza nr din ax in baza 10
+	push ax
+	push bx
+	push cx
+	push dx
+	mov bx, 10h
+	mov cx, 0
+	imparte:
+		xor dx, dx
+		div bx
+		push dx
+		inc cx
+		cmp ax, 0
+	jne imparte
+	print:
+		pop ax
+		lea bx, tabHexa
+		xlat tabHexa
+		mov dl, al
+		mov ah, 02h
+		int 21h
+	loop print
+	mov dl, 'h'
+	mov ah, 02h
+	int 21h
+	mov dl, ' ' 
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	ret
+printHex endp
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	;mesaj pentru numele fisierului
+	lea dx, msgFileName
+	mov ah, 09h
+	int 21h 
+	;citesc numele fisierului
+	lea dx, maxFileName
+	mov ah, 0Ah
+	int 21h
+	;transform numele fis in asciiz
+	mov bl, lenFileName
+	mov bh, 0
+	mov byte ptr fileName[bx], 0
+	;deschid fisierul pentru citire
+	lea dx, fileName
+	mov al , 0
+	mov ah, 3Dh
+	int 21h
+	jnc peste_open_error
+		call newLine
+		lea dx, msgOpenError
+		mov ah, 09h
+		int 21h
+		jmp final
+	peste_open_error:
+	mov handle, ax
+	;afisez un mesaj 
+	call newLine
+	lea dx, msgRez
+	mov ah, 09h
+	int 21h
+	lea di, sirCifre
+	cld
+	mov lenSirCifre, 0
+	repeta:
+		;citesc un caracter din fisier
+		lea dx, char
+		mov bx, handle
+		mov cx, 1
+		mov ah, 3Fh
+		int 21h
+		jc read_error
+		cmp ax, 0
+		jne do_stuff
+		cmp lenSirCifre, 0
+		jne end_of_number
+		jmp break
+		do_stuff:
+		mov al, byte ptr char[0]
+		cmp al, ' '
+		jne do_more_stuff
+		cmp lenSirCifre, 0
+		jne end_of_number
+		jmp next
+		do_more_stuff:
+		inc lenSirCifre
+		stosb
+		jmp next
+		end_of_number:
+			mov cl, lenSirCifre
+			xor ch, ch
+			lea si, sirCifre
+			call getHex
+			call isPrime
+			mov lenSirCifre, 0
+			lea di, sirCifre
+			cmp bx, 0
+			je next
+			inc cntPrime
+			;afisze numarul pe ecran
+			call printHex
+		next:
+	jmp repeta
+	read_error:
+		call newLine
+		lea dx, msgReadError
+		mov ah, 09h
+		int 21h
+		jmp final
+	break:
+	;inchid fisierul
+	mov bx, handle
+	mov ah, 3Eh
+	int 21h
+	jnc peste_close_error
+		call newLine
+		lea dx, msgCloseError
+		mov ah, 09h
+		int 21h
+		jmp final
+	peste_close_error:
+	;afisez mesaj daca niciun numar nu este prim
+	cmp cntPrime, 0
+	jne final
+		call newLine
+		lea dx, msgRez2
+		mov ah, 09h
+		int 21h
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
+		
+	
+		
