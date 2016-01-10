@@ -1,0 +1,73 @@
+;6. Sa se implementeze un program de autentificare. 
+;Programul are definit in segmentul de date un sir de caractere numit 'parola'. 
+;Programul va cere utilizatorului sa introduca parola de la tastatura 
+;si va verifica daca aceasta este identica cu sirul 'parola' din segmentul 
+;de date si va afisa un mesaj corespunzator. 
+;Programul tot cere utilizatorului parola, pana cand acesta o ghiceste.
+assume cs:code, ds:data
+data segment
+	pw db 'never'
+	len_pw equ $ - pw
+	msg db 'Enter password: $'
+	errMsg db 'Acces Denied!$'
+	maxPassUserLen db 50
+	len_pass_user db ?
+	pass_user db 50 dup(?)
+	succes db 'Acces Granted!$'
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	repeta:
+		lea dx, msg
+		mov ah, 09h
+		int 21h
+		
+		lea dx, maxPassUserLen
+		mov ah, 0Ah
+		int 21h
+		
+		cmp len_pass_user, len_pw
+		jne mismatch
+		cld
+		lea si, pw
+		lea di, pass_user
+		mov cl, len_pw
+		xor ch, ch
+		repe cmpsb
+		jne mismatch
+		match:
+			call newLine
+			lea dx, succes
+			mov ah, 09h
+			int 21h
+			jmp final
+		mismatch:
+			call newLine
+			lea dx, errMsg
+			mov ah, 09h
+			int 21h
+			call newLine
+	jmp repeta
+	final:
+	mov ax, 4c00h
+	int 21h
+code ends
+end start
+		
+		
+		
+		
+	
