@@ -1,0 +1,30 @@
+assume cs:code, ds:data
+data segment public
+	s1 db 'Buna'
+	l1 equ $ - s1
+	s2 db 'ziua'
+	l2 equ $ - s2
+	s3 db l1 +  l2 + 1 dup('$')
+	public s1, l1, s2, l2, s3
+data ends
+code segment public
+
+Afisare proc
+	mov ah, 09h
+	lea dx, s3
+	int 21h
+	ret
+Afisare endp
+
+public Afisare
+extrn Concatenare : proc
+
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	call Concatenare
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
