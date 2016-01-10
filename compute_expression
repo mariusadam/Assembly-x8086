@@ -1,0 +1,51 @@
+;Scrieti 2 programe in limbaj de asamblare care sa rezolve una dintre 
+;urmatoarele expresii aritmetice in interpretarea cu semn si respectiv 
+;in interpretarea fara semn, tipul variabilelor fiind specificat.
+;7. (a-2)/(b+c)+a*c+e
+;a,b-byte; c-word; e-doubleword
+
+ASSUME cs: code, ds:data
+   ;spunem asamblorului care sunt segmentele folosite de noi
+data SEGMENT
+   ;data - segmentul de date in care vom defini variabilele
+   a db 50
+   b db 10
+   c dw 300
+   e dd 1000
+ rezImp dw ?
+ expresie dd ?
+data ENDS
+;interpretarea cu semn
+code SEGMENT
+   ;code - numele segmentului de cod
+start:
+   mov ax,data
+   mov ds,ax
+   mov al,b  	;al=b
+   cbw		  	;ax=b
+   mov bx,ax  	;bx=b
+   add bx,c   	;bx=b+c
+   mov al,a   	;al=a
+   cbw		 	;ax=a 
+   sub ax,2		;ax=a-2
+   cwd			;dx:ax=a-2
+   idiv bx		;dx:ax=(a-2)/(b+c)
+   mov rezImp,ax;rezImp=[(a-2)/(b+c)]
+   mov al,a
+   cbw
+   imul c
+   add ax,word ptr e
+   adc dx,word ptr e
+   mov cx,dx
+   mov bx,ax
+   mov ax,rezImp
+   cwd
+   add ax,bx
+   adc dx,cx
+   mov word ptr expresie,ax
+   mov word ptr expresie+2,dx
+   mov ax,4C00h
+   int 21h   ;finalul executiei programului
+code ENDS
+END start
+
