@@ -1,0 +1,80 @@
+;2. Sa se citeasca cate un caracter de la tastatura, fara ecou. 
+;Daca este cifra, sa se tipareasca pe ecran, daca este caracterul '$', 
+;se termina programul, in orice alta situatie se adauga caracterul 
+;intr-un buffer care se va tipari in final pe ecran.
+assume cs:code,ds:data 
+data segment 
+	msg db 10, 'Sirul introdus este: ', '$'
+	errMsg db 10, 'Sirul este gol', '$'
+	lenMsg db 10,'Ati atins lungimea maxima permisa', 10, '$'
+	begin db 'Introduceti caractere de la tastatura, iar cand doriti afisarea sirului introdus,'
+		    db 'introduceti caracterul dolar!', 10, '$'
+	lg_max equ 255
+	sir db lg_max dup (?)
+	executie db ?
+	char db ?
+data ends
+code segment
+
+AfisareSir proc				;afiseaza un sir ce are offsetul in dx
+	mov ah, 09h
+	int 21h
+	ret
+AfisareSir endp				
+
+AfisChar proc				;afiseaza caracterul ce se afla in dl
+	mov ah, 02h
+	int 21h
+	ret
+AfisChar endp
+
+start:
+	mov ax, data 
+	mov ds, ax
+	lea dx, begin			;pregatess dx pentru afisare unui mesaj de inceput
+	call AfisareSir
+	mov si, 0 
+	mov executie, -1
+	repeta:
+		mov ah, 07h				;functie pentru citirea unui caracter fara ecou
+		int 21h					;caracterul citit se va afla in al
+		cmp al, '$'				;daca caracterul introdus este $
+		je selectSir			;atunci sarim sa sfarsit si afisam sirul introdus, sau mesaj daca sirul este gol
+		mov char, al			;altfel, verificam daca caracterul citit este cifra
+		and char, 11110000b		;folsim masca F0h, si printr-un and 
+		cmp char, 30h			;verificam daca prima cifra din codul ascii al caracterului este 3h
+		jne addChar				;daca prima cifra nu este 3h, atunci adaugam caracterul in sir
+		mov dl, al				;altlfel, punem codul ascii in dl
+		call AfisChar		;si apelam subrutina de afisare a unui caracter
+		jmp next				;sarim peste adaugarea caracterului in sir
+		addChar:				;eticheta de inceput pentru adaugarea in sir a unui caracter
+			mov sir[si], al		;pumen caracterul pe pozitia urmatoare
+			inc si				;incrementam numarl de elemente
+			cmp si, lg_max		;comparam lungimea actuala a siruliui cu lungimea maxima
+			jne next			;daca nu am ajuns la lungimea maxima permisa trecem la pasul urmator
+			mov executie, 0		;altfel, incheiem executia ciclului
+		next:
+		cmp executie, -1
+	je repeta					;ciclul se executa atata timp cat executie = true
+	selectSir:					
+		cmp si, 0				;daca sirul citit are lungimea 0
+		je sirGol				;facem un jump la eticheta care afiseaza un mesaj sugestiv
+		cmp si, lg_max			;comparam lungimea efectiva a sirului cu lungimea maxima admisa
+		jne sirCitit			;daca lungimea sirului != lung_max, afisam sirul cititt
+		lea dx, lenMsg			;altfel, afisam un mesaj prin care specifcam ca s-a ajuns la lungimea maxima
+		call AfisareSir			;apelare subrutina da aisare a unui sir
+		sirCitit:				;dupa care, afisam mai departe sirul citit
+		lea dx, msg
+		call AfisareSir
+		mov sir[si], '$'		;adaugam caracterul '$' la sfarsitul sirului
+		lea dx, sir
+		call AfisareSir			
+		jmp sfarsit				;dupa ce afisam sirul citit, facem un salt la sfarsitul programului
+		sirGol:
+			lea dx, errMsg
+			call AfisareSir
+	sfarsit:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
