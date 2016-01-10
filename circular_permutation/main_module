@@ -1,0 +1,40 @@
+;1. Se da un numar a reprezentat pe 16 biti fara semn. 
+;Se cere sa se afiseze reprezentarea in baza 16 a lui a, 
+;precum si rezultatul permutarilor circulare ale cifrelor sale. 
+assume cs:code, ds:data
+
+data segment public
+	nr dw 1110100011000101b
+	sir_cifre db 5 dup('$')  
+	nr_cifre db 0 
+	public nr_cifre
+data  ends
+
+code segment public
+extrn tiparSirCifre:proc, getCifre:proc, nextPerm:proc
+start:
+	mov ax, data
+	mov ds, ax
+	mov si, offset sir_cifre
+	mov ax, nr
+	call getCifre				;pune, incepand de la adresa si, cifrele numarului
+	mov cl, nr_cifre
+	mov ch, 0
+	mov bx, cx
+	lea dx, sir_cifre
+	call tiparSirCifre
+	dec cx
+	permutari:			;in ds:dx o sa se afle adresa sirului de afisat		
+		cmp cx, 0
+		je sfarsit
+		lea si, sir_cifre
+		call nextPerm
+		lea dx, sir_cifre
+		call tiparSirCifre
+		dec cx
+	jmp permutari
+	sfarsit:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
