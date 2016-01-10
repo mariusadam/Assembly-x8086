@@ -1,0 +1,127 @@
+;14. Sa se citeasca de la tastatura un cuvant si un nume de fisier. 
+;Sa se afiseze daca cuvantul exista sau nu in fisierul dat.
+assume cs:code, ds:data
+data segment
+	maxCuvLen db 50
+	lcuv db ?
+	cuv db 50 dup(?)
+	
+	maxFileNameLen db 50
+	lfile db ?
+	file db 50 dup(?)
+	id_file dw ?
+	
+	buffer db 100 dup(?)    
+	
+	msg db 'Introduceti numele fisierului: $'
+	readErrorMsg db 'Eroare la citirea din fisier $'
+	openErrorMsg db 'Eroare la deschiderea fisierului $'
+	msg2 db 'Introduceti cuvantul: $'
+	not_found db 'Cuvantul nu a fost gasit!$'
+	found db 'Cuvantul a fost gasit!$'
+	new_line db 10, '$'
+	gasit db 0
+data ends
+;this won't work on all cases because if the word starts 
+;at buff[99], the new read buffer contains only the rest
+;of the word, and the won't be found, even it exists
+code segment
+start:
+	push data
+	pop ds
+	
+	lea dx, msg
+	mov ah, 9h
+	int 21h
+	
+	mov ah, 0Ah
+	lea dx, maxFileNameLen
+	int 21h
+	;transform numele fisierului in asciiz
+	mov al, lfile
+	xor ah, ah
+	mov si, ax
+	mov file[si], 0
+	;deschidem fisierul pentru citire
+	mov ah, 3Dh
+	mov al, 0
+	lea dx, file
+	int 21h
+	jc open_error  ;daca CF este setat atunci exista o eroare la citire
+	
+	mov id_file,ax ;Salvam identificatorul fisierului
+	
+	lea dx, new_line
+	mov ah, 9h
+	int 21h
+	
+	lea dx, msg2
+	mov ah, 9h
+	int 21h
+	
+	mov ah, 0Ah
+	lea dx, maxCuvLen
+	int 21h
+	
+	mov ah, 9h
+	lea dx, new_line
+	int 21h
+	
+	citeste:
+		mov bx, id_file	;citim 100 de caractere
+		mov ah, 3Fh
+		lea dx, buffer
+		mov cx, 100
+		int 21h
+		jc read_error
+		cmp ax, 0		;daca nr de caractere citite este 0
+		je not_found_et	;atunci am ajuns la sf fisierului si nu am gasit cuv
+		mov si, 0
+		mov bx, 0
+		repeta:
+			mov al, buffer[si]
+			cmp al, cuv[bx]
+			jne not_equal
+			add bx, 1
+			mov al, lcuv
+			xor ah, ah
+			cmp bx, ax
+			jne next
+			mov gasit, 1
+			not_equal:
+				mov bx, 0
+			next:
+				inc si
+			cmp gasit, 1
+			je break
+		loop repeta
+	jmp citeste
+	
+	not_found_et:
+		lea dx, not_found
+		mov ah, 9h
+		int 21h
+		jmp final 
+	
+	break:
+		lea dx, found
+		mov ah, 9h
+		int 21h
+		jmp final
+		
+	open_error:
+		lea dx, openErrorMsg
+		mov ah, 9h
+		int 21h
+		jmp final 
+		
+	read_error:
+		lea dx, readErrorMsg
+		mov ah, 9h
+		int 21h
+		
+	final:
+	mov ax, 4c00h
+	int 21h
+code ends
+end start
