@@ -1,0 +1,84 @@
+;5. Sa se afiseze ora sistem curenta sub forma hh:mm si sa se specifice 
+;cu sirul 'AM' sau 'PM' daca este antemeridian sau postmeridian.
+assume cs:code, ds:data
+data segment
+	msg db 'Ora curenta este: $'
+	am db 'AM$'
+	pm db 'PM$'
+	hh db ?
+	mm db ?
+	sec db ?
+data ends
+code segment
+afisareNrZecimal proc
+	;ax = numarul ce va fi afisat in baza 10
+	;poate modifica ax, nu modifica restul registrilor
+	push cx
+	push dx
+	mov cx, 0
+	mov bx, 10
+	repeta:
+		xor dx, dx
+		div bx
+		push dx
+		inc cx
+		cmp ax, 0
+	jne repeta
+	cmp cx, 1
+	jne print
+	push 0
+	inc cx
+	print:
+		pop dx
+		add dl, 30h
+		mov ah, 02h
+		int 21h
+	loop print
+	pop cx
+	pop dx
+	ret
+afisareNrZecimal endp
+		
+start:
+	push data
+	pop ds
+	mov ah, 2Ch	;time interrupt
+	int 21h
+	;ch = hours, cl = minutes, dh = seconds
+	mov hh, ch
+	mov mm, cl
+	mov sec, dh
+	lea dx, msg
+	mov ah, 09h
+	int 21h
+	mov al, hh
+	xor ah, ah
+	mov dl, 12
+	div dl
+	mov al, ah
+	xor ah, ah
+	call afisareNrZecimal
+	mov dl, ':'
+	mov ah, 02h
+	int 21h
+	mov al, mm
+	xor ah, ah
+	call afisareNrZecimal
+	mov dl, ' '
+	mov ah, 02h
+	int 21h
+	cmp hh, 12
+	ja post
+		lea dx, am
+		mov ah, 09h
+		int 21h
+		jmp final
+	post:
+		lea dx, pm
+		mov ah, 09h
+		int 21h
+	final:
+	mov ax, 4c00h
+	int 21h
+code ends
+end start
