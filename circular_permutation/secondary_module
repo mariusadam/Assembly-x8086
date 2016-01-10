@@ -1,0 +1,81 @@
+assume cs:code, ds:data
+data segment public
+	extrn nr_cifre : byte
+	zece dw 10h
+	tmp db ? 
+	TAB_HEXA db '0123456789ABCDEF'
+data ends
+
+code segment public
+public tiparSirCifre, getCifre
+
+tiparSirCifre proc
+;intrare: ds:dx = adresa far a sirului de tiparit, sirul are caracterul $ la sfarsit
+;tipareste un sir de octeti
+;nu modifica niciun registru
+	push ax
+	mov ah, 09h
+	int 21h
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop ax
+	ret
+tiparSirCifre endp
+
+getCifre proc
+;intrare: ax = numarul ale carui cifre vor fi puse intr-un sir de caractere
+;ds:si = adresa de inceput unde se vor pune caracterele corespunzatoare
+;				  cifrelor hexa ale numarului din ax
+;nu modifica restul registrilor, poate modifica ax
+	push bx
+	push cx
+	repeta:
+		mov dx, 0  			;extindem ax la word deoarece este posibil ca rezultatul 
+							;impartirii sa nu incapa intr-un byte
+		div zece				;impartim la 10h pentru a afla ultima cifra hexa
+		push dx				;punem restul pe stiva
+		inc nr_cifre		;actualizam numarul de cifre
+		cmp ax, 0 			;efectum pasii pana catul devine 0
+	jne repeta
+	mov cl, nr_cifre
+	mov ch, 0
+	lea bx, TAB_HEXA
+	copy:
+		pop ax
+		mov byte ptr [si], al
+		xlat TAB_HEXA
+		mov byte ptr [si], al
+		inc si
+	loop copy
+	pop bx
+	pop cx
+	ret
+getCifre endp
+
+nextPerm proc
+public nextPerm
+;intrare ds:si = adresa far a sirului de trebuie permutat 
+;		    bx = numarul de elemente ce trebuie permutate
+;returneaza sirul permutat cu o pozitite la dreapta
+	push ax
+	push bx
+	dec bx
+	mov al, [si] + bx
+	mov tmp, al
+	deplasare:
+		mov al, si[bx]-1
+		mov si[bx], al
+		dec bx
+		cmp bx, 0
+	jne deplasare
+	mov al, tmp
+	mov si[bx], al
+	pop bx
+	pop ax
+	ret
+nextPerm endp
+
+code ends
+end
+		
