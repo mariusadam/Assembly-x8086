@@ -1,0 +1,162 @@
+;Sa se citeasca un sir de caractere de la tastatura si un nume de fisier.
+;Sa se afiseze in fisierul creat vocalele din sir si numarul acestora in baza 16
+assume cs:code, ds:data
+data segment
+	msgSir db 'Introduceti sirul: $'
+	msgFile db 'Introduceti numele fisierului: $'
+	msgCreatError db 'Eroare la crearea fisierului!$'
+	msgWriteError db 'Eroare la scrierea in fisier!$'
+	
+	maxFileName db 20
+	lenFile db ?
+	fileName db 21 dup(?)
+	handle dw ?
+	
+	maxSir db 255
+	lenSir db ?
+	sir db 255 dup(?)
+	nrVoc dw ?
+	voc db 'aeiouAEIOU'
+	space db ' $'
+	newLine db 10
+	char db ?, '$'
+	tab db '0123456789ABCDEF'
+data ends
+code segment
+start:
+	mov ax, data
+	mov ds, ax
+	;mesaj pentru citirea sirului de caractere
+	lea dx, msgSir
+	mov ah, 09h
+	int 21h
+	;citesc sirul de caractere
+	lea dx, maxSir
+	mov ah, 0Ah
+	int 21h
+	;trec pe linia urmatoare
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	;mesaj pentru citirea numelui fisierului
+	lea dx, msgFile
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului 
+	lea dx, maxFileName
+	mov ah, 0Ah
+	int 21h
+	;transform numele in asciiz
+	mov bl, lenFile
+	xor bh, bh
+	mov byte ptr fileName[bx], 0
+	;creez fisierul
+	lea dx, fileName
+	mov cx, 00h
+	mov ah, 3Ch
+	int 21h
+	jc creat_error
+	
+	jmp peste_creat_error
+	creat_error:
+		lea dx, msgCreatError
+		mov ah, 09h
+		int 21h
+		jmp final
+		
+	peste_creat_error:
+	;deschid pentru scrierea
+	lea dx, fileName
+	mov al, 1
+	mov ah, 3Dh
+	int 21h
+	mov handle, ax
+	lea si, sir
+	mov cl, lenSir
+	xor ch, ch
+	mov nrVoc, 0
+	cld
+	print_voc:
+		lea di, voc
+		lodsb
+		push cx
+		
+		mov cx, 10
+		search:
+			cmp al, byte ptr [di]
+			je vocala
+			inc di
+		loop search
+		jmp next
+		vocala:
+			;afisez vocala in fisier
+			lea dx, [di]
+			mov bx, handle
+			mov cx, 1
+			mov ah, 40h
+			int 21h	
+			jc write_error
+			;afisez un spatiu
+			lea dx, space
+			mov cx, 1
+			mov bx, handle
+			mov ah, 40h
+			int 21h
+			jc write_error
+			inc nrVoc
+		next:
+		pop cx
+	loop print_voc
+	
+	jmp peste_write_error
+	write_error:
+		lea dx, msgWriteError
+		mov ah, 09h
+		int 21h	
+		jmp final
+		
+	peste_write_error:
+	;afisez o linie noua in fisier
+	lea dx, newLine
+	mov cx, 1
+	mov bx, handle
+	mov ah, 40h
+	int 21h
+	jc write_error
+	;afisez numarul de vocale pe linie noua in fisier
+	mov ax, nrVoc
+	mov cx, 0
+	mov bx, 10h
+	imparte2:
+		xor dx, dx
+		div bx
+		push dx
+		inc cx
+		cmp ax, 0
+	jne imparte2
+	print2:
+		pop ax
+		push cx
+		lea bx, tab
+		xlat tab
+		mov byte ptr char[0], al
+		lea dx, char
+		mov cx, 1
+		mov bx, handle
+		mov ah, 40h
+		int 21h
+		jc write_error
+		pop cx
+	loop print2		
+	mov byte ptr char[0], 'h'
+	lea dx, char
+	mov cx, 1
+	mov bx, handle
+	mov ah, 40h
+	int 21h
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
+	
