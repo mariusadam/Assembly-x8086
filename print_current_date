@@ -1,0 +1,83 @@
+;4. Sa se afiseze data curenta si ziua curenta din saptamana (in litere).
+assume cs:code, ds:data
+data segment
+	dum db 'duminica-$'
+	lun db 'luni-$'
+	mar db 'marti-$'
+	mie db 'miercuri-$'
+	joi db 'joi-$'
+	vin db 'vineri-$'
+	sam db 'sambata-$'
+	index dw dum, lun, mar, mie, joi, vin, sam
+	zi db ?, ?, '/$'
+	luna db '0', ?, '/$'
+	an db ?, ?, ?, ?, '$'
+	zece db 10
+	offset_zi dw ?
+data ends
+
+code segment
+start:
+	mov ax, data
+	mov ds, ax
+	mov ah, 2Ah ;dl = ziua(1..31) dh = luna, cx = anul, al = o zi din sapt(0..6)
+	int 21h 
+	mov ah, 0
+	mov offset_zi, ax
+	
+	mov bx, offset an+4
+	mov ax, cx
+	pune_an:
+		div zece
+		add ah, '0'
+		dec bx
+		mov [bx], ah
+		mov ah, 0
+		cmp al, 0
+	jne pune_an
+	
+	mov al, dl
+	mov bx, offset zi+2
+	pune_zi:
+		mov ah, 0
+		div zece
+		add ah, '0'
+		dec bx
+		mov [bx], ah
+		cmp al, 0
+	jne pune_zi
+	
+	mov al, dh
+	mov bx, offset luna+2
+	pune_luna:
+		mov ah, 0
+		div zece
+		add ah, '0'
+		dec bx
+		mov [bx], ah
+		cmp al, 0
+	jne pune_luna
+	
+	mov bx, offset_zi
+	add bx, bx
+	mov dx, index[bx]
+	mov ah, 09h
+	int 21h
+	
+	lea dx, zi
+	mov ah, 09h
+	int 21h
+	
+	lea dx, luna
+	mov ah, 09h
+	int 21h
+	
+	lea dx, an
+	mov ah, 09h
+	int 21h
+	
+	mov ax, 4C00h
+	int 21h
+	
+code ends
+end start
