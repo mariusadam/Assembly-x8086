@@ -1,0 +1,52 @@
+;10. Se da un sir de octeti S. Sa se obtina in sirul D multimea elementelor din S.
+;Exemplu:
+;S: 1, 4, 2, 4, 8, 2, 1, 1
+;D: 1, 4, 2, 8
+;ex2:
+;S: 1, 4, 4, 4, 3, 2, 5, 4, 8, 3, 2, 5, 1, 1, 13, 1, 1, 13, 12, 12, 12, 12, 12, 1, 1, 2, 2, 3, 5, 4, 11, 9, 9, 11, 5, 10, 15, 10
+;D: 1, 4, 3, 2, 5, 8, 13, 12, 11, 9, 10, 15
+;S: 1
+;D: 1
+assume cs:code, ds:data
+data segment
+	s db 1, 4, 2, 4, 8, 2, 1, 1
+	lg EQU ($-s)
+	d db lg dup(?)
+	tempDI dw ?
+data ends
+
+code segment
+start:
+	mov ax, data 					;incarcarea adresei segmentului de date in ds
+	mov ds, ax
+	mov cx, lg
+	mov al, byte ptr s[0]			;pun primul elemnt din s in d
+	mov d[0], al
+	mov si, 1						;pornesc parcurgerea de la al doilea element
+	mov di, 1
+	repeta:
+		mov al, byte ptr s[si]		;pun in AL elmentul curent din si
+		mov tempDI, di 				;memorez intr-o variabila auziliara lungimea sirului destinatie 
+		mov dx, di					;DX = nr. curent de el din sirul destinatie
+		mov di, 0					;pregatesc di pentru cautarea in sirul destinatie
+		cauta:
+			mov ah, byte ptr d[di]	;parcurg toate elementle din sirul destinatie
+			cmp ah, al				;si le compar cu elemntul curent din sirul sursa
+			je next 				;daca elem. curent din s este deja in d trec la urm. elem din s printr-un salt la eticheta next
+			add di, 1	
+			dec dx					;altfel trec la urmatorul element din 
+			cmp dx, 0				;sirul destinatie pentru a-l compara cu al
+		jne cauta
+		copy:						;dupa ce au fost efectuate toate verificarile,
+		mov d[di], al				;daca se ajunge la eticheta copy,
+		inc di						;se copiaza din sirul sursa, un nou elem. in sirul destinatie
+		jmp next2					;sar peste continutul etichetei next deoarece in di se afla valoare corecta si nu trebuie modificata la pasul curent
+		next:						;daca se ajunge la eticheta next,atunci di revine la valoarea de dinainte de cautare
+		mov di, tempDI 				;pentru ca nu s-a inserat nciun element nou in sirul destinatie
+		next2: 
+		add si, 1					;se trece la urmatorul element al sirului sursa
+	loop repeta 					;daca mai avem elemente neverificate in sirul sursa se mai executa inca odata ciclul
+	mov ax, 4C00h					;altfel se incheie executia programului	
+	int 21h
+code ends
+end start	
