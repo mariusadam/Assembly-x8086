@@ -1,0 +1,141 @@
+;12. Sa se citeaca de la tastatura doua nume de fisiere. Sa se copieze primul fisier in cel de al doilea. 
+;Se va semnala orice situatie de eroare.
+assume cs:code, ds:data
+data segment
+	maxFileNameLen1 db 30
+	lgFileName1 db ?
+	fileName1 db 30 dup(?)
+	h1 dw ?
+	
+	maxFileNameLen2 db 30
+	lgFileName2 db ?
+	fileName2 db 30 dup(?)
+	h2 dw ? 
+	
+	BUFF_SIZE equ 255
+	buffer db BUFF_SIZE dup(?)
+	
+	msg1 db 'Introduceti numele primului fisier: $'
+	msg2 db 'Introduceti numele celui de-al doilea fisier: $'
+	openFileErrorMsg db 'Nu s-a putut deschide fisierul! $'
+	readFileErrorMsg db 'Nu s-a putut citi din fisier! $'
+	writeFileErrorMsg db 'Nu s-a putut scrie in fisier! $'
+	closeFileErrorMsg db 'Nu s-a putut inchide fisirul! $'
+	
+data ends
+code segment
+
+new_line proc
+	mov dl, 0Ah
+	mov ah, 02h
+	int 21h
+	ret
+new_line endp
+start:
+	push data
+	pop ds
+	
+	lea dx, msg1
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxFileNameLen1
+	mov ah, 0Ah
+	int 21h
+	;transform numele fisierului in asciiz
+	mov al, lgFileName1
+	xor ah, ah
+	mov si, ax
+	mov fileName1[si], 0
+	;deschid primul fisier pentru citire
+	lea dx, fileName1
+	mov ah, 3Dh
+	mov al, 0
+	int 21h
+	jc open_error
+	mov h1, ax ;salvez handler-ul primului fisier in h1
+	
+	call new_line
+	;mesaj pentru citirea fis2
+	lea dx, msg2
+	mov ah, 9h
+	int 21h
+	;citesc numele fis2
+	lea dx, maxFileNameLen2
+	mov ah, 0Ah
+	int 21h
+	;transform numele fis in asciiz
+	mov al, lgFileName2
+	xor ah, ah
+	mov si, ax
+	mov fileName2[si], 0
+	;deschid al doilea fisier pentru scriere
+	lea dx, fileName2
+	mov ah, 3Dh
+	mov al, 1
+	int 21h
+	jc open_error
+	mov h2, ax
+	
+	repeta:
+		;citesc octetii din primul fisier
+		lea dx, buffer
+		mov cx, BUFF_SIZE
+		mov bx, h1
+		mov ah, 3Fh
+		int 21h
+		jc read_error
+		cmp ax, 0 ;daca numarul de octeti cititi este 0 atunci ne oprim
+		je close_files
+		
+		mov cx, ax	;scriu buffer-ul in al doilea fisier
+		mov bx, h2
+		lea dx, buffer
+		mov ah, 40h
+		int 21h
+		jc write_error
+	jmp repeta
+	
+	close_files:
+		mov ah, 3Eh
+		mov bx, h1
+		int 21h
+		jc close_error
+		mov ah, 3Eh
+		mov bx, h2
+		int 21h
+		jc close_error
+		jmp final
+		
+	open_error:
+		call new_line
+		lea dx, openFileErrorMsg
+		mov ah, 9h
+		int 21h
+		jmp final
+	
+	read_error:
+		call new_line
+		lea dx, readFileErrorMsg
+		mov ah, 9h
+		int 21h
+		jmp final
+	
+	write_error:
+		call new_line
+		lea dx, writeFileErrorMsg
+		mov ah, 9h
+		int 21h
+		jmp final
+	
+	close_error:
+		call new_line
+		lea dx, closeFileErrorMsg
+		mov ah, 9h
+		int 21h 
+		
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
