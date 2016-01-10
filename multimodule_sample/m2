@@ -1,0 +1,21 @@
+assume cs:code, ds:data
+data segment public
+	extrn s1 : byte, l1 : abs, s2 : byte, l2 : abs, s3 : byte
+data ends
+code segment public
+Concatenare proc
+public Concatenare
+	lea si, s1
+	lea di, s3
+	mov cx, l1
+	cld
+	rep movsb
+	lea si, s2
+	mov cx, l2
+	rep movsb
+	extrn Afisare : proc
+	call Afisare
+	ret
+Concatenare endp
+code ends
+end
