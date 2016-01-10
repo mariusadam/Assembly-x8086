@@ -1,0 +1,181 @@
+;8. Sa se scrie un program care citeste numele unui fisier si doua caractere 
+;de la tastatura. Programul va inlocui in fisier toate aparitiile primului 
+;caracter cu cel de-al doilea caracter.
+assume cs:code, ds:data
+data segment
+	msg1 db 'Introduceti caracterul care doriti sa fie inlocuit: $'
+	msg2 db 'Introduceti noul caracter: $'
+	msg3 db 'Introduceti numele fisierului: $'
+	msg4 db ' aparitii au fost inlocuite.$'
+	openErrorMsg db 'Eroare la deschiderea fisierului!$'
+	readErrorMsg db 'Eroare la citirea din fisier!$'
+	writeErrorMsg db 'Eroare la scrierea in fisier!$'
+	closeErrorMsg db 'Eroare la inchiderea fisierului!$'
+	pointerErrorMsg db 'Eroare la mutarea pointerului de fisier!$'
+	c1 db ?
+	c2 db ?
+	cnt dw ?
+	maxFileNameLen db 50 
+	lenFileName db ?
+	fileName db 51 dup(?)
+	handle dw ?
+	buff db '$$'
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+afisareNrZecimal proc
+	;ax = numarul ce va fi afisat in baza 10
+	;poate modifica ax, nu modifica restul registrilor
+	push cx
+	push dx
+	mov cx, 0
+	mov bx, 10
+	imparte:
+		xor dx, dx
+		div bx
+		push dx
+		inc cx
+		cmp ax, 0
+	jne imparte
+	print:
+		pop dx
+		add dl, 30h
+		mov ah, 02h
+		int 21h
+	loop print
+	pop cx
+	pop dx
+	ret
+afisareNrZecimal endp
+start:
+	push data
+	pop ds
+	;afisez mesaj
+	lea dx, msg1
+	mov ah, 09h 
+	int 21h
+	;citesc un caracter
+	mov ah, 01h
+	int 21h
+	mov c1, al
+	;afisez mesaj
+	call newLine
+	lea dx, msg2
+	mov ah, 09h
+	int 21h
+	;citesc al doilea caracter
+	mov ah, 01h
+	int 21h
+	mov c2, al
+	;mesaj pentru citirea numelui fisierului
+	call newLine
+	lea dx, msg3
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxFileNameLen
+	mov ah, 0Ah
+	int 21h
+	;transform numele fis in asciz
+	mov bl, lenFileName
+	xor bh, bh
+	mov fileName[bx], 0
+	;deschid fisierul pentru citire/scriere
+	lea dx, fileName
+	mov al, 2
+	mov ah, 3Dh
+	int 21h
+	jc open_error
+	mov handle, ax
+	mov cnt, 0
+	repeta:
+		mov bx, handle
+		mov cx, 1
+		lea dx, buff
+		mov ah, 3Fh
+		int 21h
+		jc read_error
+		cmp ax, 0
+		je break
+		mov al, buff[0]
+		cmp al, c1
+		jne dont_replace
+		inc cnt
+		mov al, c2
+		mov byte ptr buff, al
+		dont_replace:
+			mov ah, 42h
+			mov al,1
+			mov cx,-1
+			mov dx,-1
+			int 21h
+			jc pointer_error
+			mov bx, handle
+			mov cx, 1
+			lea dx, buff
+			mov ah, 40h 
+			int 21h 
+			jc write_error
+	jmp repeta
+	break:
+		call newLine
+		mov ax, cnt
+		call afisareNrZecimal
+		lea dx, msg4
+		mov ah, 09h
+		int 21h
+		;close file with handle
+		mov bx, handle
+		mov ah, 3Eh
+		int 21h
+		jc close_error
+		jmp final
+		
+	open_error:
+		call newLine
+		lea dx, openErrorMsg
+		mov ah, 09h
+		int 21h
+		jmp final
+		
+	read_error:
+		call newLine
+		lea dx, readErrorMsg
+		mov ah, 09h
+		int 21h 
+		jmp final
+	
+	pointer_error:
+		call newLine
+		lea dx, pointerErrorMsg
+		mov ah, 09h
+		int 21h
+		jmp final
+	
+	write_error:
+		call newLine
+		lea dx, writeErrorMsg
+		mov ah, 09h
+		int 21h
+		jmp final
+		
+	close_error:
+		call newLine
+		lea dx, closeErrorMsg
+		mov ah, 09h
+		int 21h
+		
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
