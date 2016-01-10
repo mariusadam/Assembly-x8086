@@ -1,0 +1,92 @@
+;Se citeste un nume de fisier si o extensie.
+;Sa se creeeze un fisiser cu extensia data.
+;(ex: pentru numeFis si txt se va crea fisierul numeFis.txt)
+assume cs:code, ds:data
+data segment
+	msgName db 'Introduceti numele fisierului: $'
+	msgExt db 'Introduceti extensia: $'
+	msgRez db 'A fost creat fisierul: $'
+	msgErrorCreate db 'Eroare la crearea fisierului!$'
+	
+	maxFileNameLen db 9
+	lgFileName db ?
+	fileName db 20 dup(?)
+	
+	maxExtLen db 10
+	lgExt db ?
+	ext db 11 dup(?)
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	;mesaj pentru numele fisierului
+	lea dx, msgName
+	mov ah, 09h
+	int 21h
+	;citesc numele fisierului
+	lea dx, maxFileNameLen
+	mov ah, 0Ah
+	int 21h
+	;mesaj pentru citirea extensiei
+	call newLine
+	lea dx, msgExt
+	mov ah, 09h
+	int 21h
+	;citesc extensia
+	lea dx, maxExtLen
+	mov ah, 0Ah
+	int 21h
+	;concatenez cele 2 siruri cu .(fileName.ext)
+	mov bl, lgFileName
+	xor bh, bh
+	lea di, fileName[bx] ;adresa destinatie este la sfarsitul primului sir
+	mov byte ptr [di], '.'
+	inc di
+	lea si, ext ;adresa sursa este adresa de inceput sa extensiei
+	mov cl, lgExt
+	xor ch, ch
+	cld
+	rep movsb
+	;transfrom numele fisierului in asciiz
+	mov byte ptr [di], 0
+	;creez fisierul
+	lea dx, fileName
+	mov cx, 0
+	mov ah, 3Ch
+	int 21h
+	jc create_error
+	call newLine
+	lea dx, msgRez
+	mov ah, 09h
+	int 21h
+	mov byte ptr [di], '$'
+	lea dx, fileName
+	mov ah, 09h
+	int 21h
+	jmp final
+	
+	create_error:
+		call newLine
+		lea dx, msgErrorCreate
+		mov ah, 09h
+		int 21h
+		
+	final:
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
+	
+	
