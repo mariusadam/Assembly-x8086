@@ -1,0 +1,151 @@
+;2. Se cere sa se citeasca de la tastatura un sir de numere, date in baza 10.
+assume cs:code, ds:data
+data segment
+	msgNrEl db 'Introduceti numarul de elemente: $'
+	msgEl db 'Introduceti elementul $'
+	
+	nrEl dw ?
+	maxNrLen db 7
+	lenNr db ?
+	sirCif db 7 dup(?)
+	
+	array dw 25 dup(?)
+data ends
+code segment
+newLine proc
+	push ax
+	push dx
+	mov dl, 10
+	mov ah, 02h
+	int 21h
+	pop dx
+	pop ax
+	ret
+newLine endp
+afisNrDec proc
+;afiseaza nr din ax in baza 10
+	push ax
+	push bx
+	push cx
+	push dx
+	mov bx, 10
+	mov cx, 0
+	imparte:
+		xor dx, dx
+		div bx
+		push dx
+		inc cx
+		cmp ax, 0
+	jne imparte
+	print:
+		pop dx
+		add dl, 30h
+		mov ah, 02h
+		int 21h
+	loop print
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	ret
+afisNrDec endp
+getNrDec proc
+;primeste in si, offsetul unui sir de cifre si in cx numarul de cifre
+;returneaza numarul corespunzator in ax in baza 10
+;modifica ax, nu modifica restul reg
+	push bx
+	push cx
+	push dx
+	push si
+	mov bl, 10
+	xor bh, bh
+	mov ax, 0
+	cld
+	get_nr:
+		push cx
+		xor dx, dx
+		mul bx
+		mov cx, ax
+		xor ah, ah
+		lodsb
+		sub al, 30h
+		add ax, cx
+		pop cx
+	loop get_nr
+	pop si
+	pop dx
+	pop cx
+	pop bx
+	ret
+getNrDec endp
+start:
+	mov ax, data
+	mov ds, ax
+	mov es, ax
+	;mesaj pentru citirea nr de elemente
+	lea dx, msgNrEl
+	mov ah, 09h
+	int 21h
+	;citesc numarul de elemente
+	lea dx, maxNrLen
+	mov ah, 0Ah
+	int 21h
+	;obtin numarl din sirCif in ax
+	lea si, sirCif
+	mov cl, lenNr
+	xor ch, ch
+	call getNrDec
+	mov nrEl, ax
+	mov cx, ax
+	lea di, array
+	cld
+	
+	citeste:	;citest elementele sirului
+		call newLine
+		;afisez mesaj pentru introducerea unui element
+		lea dx, msgEl
+		mov ah, 09h 
+		int 21h
+		;afisez indexul elementului curent
+		mov ax, nrEl
+		sub ax, cx
+		call afisNrDec
+		;afisez 2 puncte
+		mov dl, ':'
+		mov ah, 02h
+		int 21h
+		;afisez un spatiu
+		mov dl, ' '
+		mov ah, 02h
+		int 21h
+		;citesc un nr sub forma de sir de caractere
+		lea dx, maxNrLen
+		mov ah, 0Ah
+		int 21h
+		push cx	;salvez cx
+		;obtin in ax, numarul din sirCif, cx = lungime sirului
+		lea si, sirCif
+		mov cl, lenNr
+		xor ch, ch
+		call getNrDec ;ax = numarul citit la return
+		stosw	;memorez numarul citit
+		pop cx ;restaurez cx
+	loop citeste
+	
+	mov cx, nrEl
+	lea si, array
+	cld
+	call newLine
+	afiseaza:
+		lodsw
+		call afisNrDec
+		;afisez un spatiu
+		mov dl, ' '
+		mov ah, 02h
+		int 21h
+	loop afiseaza
+	
+	mov ax, 4C00h
+	int 21h
+code ends
+end start
